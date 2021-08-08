@@ -1,4 +1,4 @@
-use goblin::elf::{Elf, program_header::PT_LOAD};
+use goblin::elf::{program_header::PT_LOAD, Elf};
 use std::convert::TryFrom;
 use vdso_proxy_poc::{Error, JmpPad, MapEntry, Mmap, VirtAddr};
 
@@ -113,7 +113,7 @@ fn main() -> Result<(), Error> {
     };
 
     // As an example, install a trampoline for the `__vdso_gettimeofday` symbol. The trampoline is
-    // installed in the _old_ vdso pages, where the user code from the checkpoint image links to,
+    // installed in the _old_ vdso pages, where the user code from the checkpoint image binds to,
     // and forwards the calls into the _new_ vdso pages.
     let pad = JmpPad::to(orig_sym_addr);
     // SAFETY: copy_sym_addr is a valid virtual address as we got it from the symbol lookup.
@@ -125,8 +125,7 @@ fn main() -> Result<(), Error> {
     };
 
     unsafe {
-        // Mimic a call to `__vdso_gettimeofday` from user code which is still linked to the _old_
-        // vdso.
+        // Mimic a call to `__vdso_gettimeofday` from user code which binds to the _old_ vdso.
 
         // SAFETY: copy_sym_addr is a valid virtual address pointing to the `__vdso_gettimeofday`
         // function.

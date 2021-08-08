@@ -1,0 +1,9 @@
+[package]
+name    = "vdso-proxy-poc"
+authors = ["johannst <johannes.stoelp@gmail.com>"]
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+libc   = "0.2"
+goblin = { version = "0.4", default-features = false, features = ["std", "elf32", "elf64", "endian_fd"] }

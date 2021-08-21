@@ -44,12 +44,12 @@ unsafe fn copy_vdso(vdso: &MapEntry) -> Option<Mmap> {
 /// # Safety:
 /// The caller must guarantee that the `vdso` argument describes a valid virtual address range by
 /// its `address` and `length` fields.
-///
-/// # Note:
-/// Currently the version of the symbol is not checked, technically this is an error which can be
-/// fatal in case of a binary incompatibility, but that's accepted for this PoC.
 #[allow(unused_unsafe)]
-unsafe fn get_vdso_sym(vdso: &MapEntry, symbol_name: &str) -> Result<VirtAddr, Error> {
+unsafe fn get_vdso_sym(
+    vdso: &MapEntry,
+    symbol_name: &str,
+    symbol_version: &str,
+) -> Result<VirtAddr, Error> {
     // Turn `vdso` maps entry into slice of bytes.
     let bytes = {
         let ptr = vdso.addr as *const u8;
@@ -75,12 +75,38 @@ unsafe fn get_vdso_sym(vdso: &MapEntry, symbol_name: &str) -> Result<VirtAddr, E
     assert_ne!(dso_base, 0, "If the dso base address is 0 that means the symbols contain absolute addresses, we don't want to support that!");
 
     // Try to find the requested symbol.
-    let sym = elf
+    let (idx, sym) = elf
         .dynsyms
         .iter()
-        .filter(|sym| sym.is_function())
-        .find(|sym| matches!(elf.dynstrtab.get_at(sym.st_name), Some(sym) if sym == symbol_name))
+        .enumerate()
+        .filter(|(_, sym)| sym.is_function())
+        .find(
+            |(_, sym)| matches!(elf.dynstrtab.get_at(sym.st_name), Some(sym) if sym == symbol_name),
+        )
         .ok_or(Error::SymbolNotFound(symbol_name.into()))?;
+
+    let found_symbol_version = elf
+        .versym
+        .ok_or(Error::SymbolVersionError(
+            "Missing ELF section Versym".into(),
+        ))?
+        .get_at(idx)
+        .ok_or(Error::SymbolVersionError(format!(
+            "No Versym entry for symbol with idx {} found",
+            idx
+        )))?
+        .find_version(elf.verdef.as_ref(), elf.verneed.as_ref())
+        .ok_or(Error::SymbolVersionError(format!(
+            "No symbol version string found for symbol with idx {}",
+            idx
+        )))?;
+
+    if found_symbol_version != symbol_version {
+        return Err(Error::SymbolVersionError(format!(
+            "Symbol version missmatch, want {} but found {}",
+            symbol_version, found_symbol_version
+        )));
+    };
 
     // Compute the absolute virtual address of the requested symbol.
     Ok(VirtAddr(dso_base + sym.st_value))
@@ -105,9 +131,9 @@ fn main() -> Result<(), Error> {
 
     let (orig_sym_addr, copy_sym_addr) = unsafe {
         // SAFETY: orig_vdso describes a valid memory region as we got it from /proc/self/maps.
-        let orig = get_vdso_sym(&orig_vdso, "__vdso_gettimeofday")?;
+        let orig = get_vdso_sym(&orig_vdso, "__vdso_gettimeofday", "LINUX_2.6")?;
         // SAFETY: copy_vdso describes a valid and owned memory allocation.
-        let copy = get_vdso_sym(&copy_vdso.as_ref(), "__vdso_gettimeofday")?;
+        let copy = get_vdso_sym(&copy_vdso.as_ref(), "__vdso_gettimeofday", "LINUX_2.6")?;
 
         (orig, copy)
     };

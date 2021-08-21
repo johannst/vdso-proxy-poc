@@ -11,8 +11,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "goblin"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b1800b95efee8ad4ef04517d4d69f8e209e763b1668f1179aeeedd0e454da55"
+source = "git+https://github.com/johannst/goblin?branch=elf-gnu-symbol-versioning-utils#8716406638b4bd8da1751352678ea9aa749c534d"
 dependencies = [
  "log",
  "plain",

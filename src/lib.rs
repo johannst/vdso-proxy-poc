@@ -17,6 +17,8 @@ pub enum Error {
     /// Requested symbol not found in the ELF file.
     /// Captures the name of the requested symbol.
     SymbolNotFound(String),
+    /// Error during symbol version lookup.
+    SymbolVersionError(String),
 }
 
 /// Representation of an 64-bit virtual address.

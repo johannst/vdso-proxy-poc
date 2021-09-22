@@ -95,7 +95,7 @@ unsafe fn get_vdso_sym(
             "No Versym entry for symbol with idx {} found",
             idx
         )))?
-        .find_version(elf.verdef.as_ref(), elf.verneed.as_ref())
+        .find_version(elf.verdef.as_ref(), elf.verneed.as_ref(), &elf.dynstrtab)
         .ok_or(Error::SymbolVersionError(format!(
             "No symbol version string found for symbol with idx {}",
             idx

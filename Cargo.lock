@@ -11,7 +11,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "goblin"
 version = "0.4.2"
-source = "git+https://github.com/johannst/goblin?branch=elf-gnu-symbol-versioning-utils#b3f8ab6611f652f6b18cc361680ca5d36bbad6c5"
+source = "git+https://github.com/johannst/goblin?branch=elf-gnu-symbol-versioning-utils#4893886664718b7627a572578b69de65a9f88e24"
 dependencies = [
  "log",
  "plain",

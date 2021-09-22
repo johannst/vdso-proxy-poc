@@ -5,6 +5,9 @@ use vdso_proxy_poc::{Error, JmpPad, MapEntry, Mmap, VirtAddr};
 #[cfg(not(target_os = "linux"))]
 compile_error!("This only makes sense on Linux, as we are poking the vdso.");
 
+struct Sym<'a>(&'a str);
+struct Symver<'a>(&'a str);
+
 /// Find the `[vdso]` entry in `/proc/self/maps`.
 fn get_vdso() -> Result<MapEntry, Error> {
     for line in std::fs::read_to_string("/proc/self/maps")
@@ -47,8 +50,8 @@ unsafe fn copy_vdso(vdso: &MapEntry) -> Option<Mmap> {
 #[allow(unused_unsafe)]
 unsafe fn get_vdso_sym(
     vdso: &MapEntry,
-    symbol_name: &str,
-    symbol_version: &str,
+    symbol_name: Sym,
+    symbol_version: Symver,
 ) -> Result<VirtAddr, Error> {
     // Turn `vdso` maps entry into slice of bytes.
     let bytes = {
@@ -81,9 +84,9 @@ unsafe fn get_vdso_sym(
         .enumerate()
         .filter(|(_, sym)| sym.is_function())
         .find(
-            |(_, sym)| matches!(elf.dynstrtab.get_at(sym.st_name), Some(sym) if sym == symbol_name),
+            |(_, sym)| matches!(elf.dynstrtab.get_at(sym.st_name), Some(sym) if sym == symbol_name.0),
         )
-        .ok_or(Error::SymbolNotFound(symbol_name.into()))?;
+        .ok_or(Error::SymbolNotFound(symbol_name.0.into()))?;
 
     let found_symbol_version = elf
         .versym
@@ -101,10 +104,10 @@ unsafe fn get_vdso_sym(
             idx
         )))?;
 
-    if found_symbol_version != symbol_version {
+    if found_symbol_version != symbol_version.0 {
         return Err(Error::SymbolVersionError(format!(
             "Symbol version missmatch, want {} but found {}",
-            symbol_version, found_symbol_version
+            symbol_version.0, found_symbol_version
         )));
     };
 
@@ -131,9 +134,9 @@ fn main() -> Result<(), Error> {
 
     let (orig_sym_addr, copy_sym_addr) = unsafe {
         // SAFETY: orig_vdso describes a valid memory region as we got it from /proc/self/maps.
-        let orig = get_vdso_sym(&orig_vdso, "__vdso_gettimeofday", "LINUX_2.6")?;
+        let orig = get_vdso_sym(&orig_vdso, Sym("__vdso_gettimeofday"), Symver("LINUX_2.6"))?;
         // SAFETY: copy_vdso describes a valid and owned memory allocation.
-        let copy = get_vdso_sym(&copy_vdso.as_ref(), "__vdso_gettimeofday", "LINUX_2.6")?;
+        let copy = get_vdso_sym(&copy_vdso.as_ref(), Sym("__vdso_gettimeofday"), Symver("LINUX_2.6"))?;
 
         (orig, copy)
     };

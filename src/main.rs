@@ -88,8 +88,10 @@ unsafe fn get_vdso_sym(
         )
         .ok_or(Error::SymbolNotFound(symbol_name.0.into()))?;
 
-    let found_symbol_version = elf
+    // Get the corresponding ElfVersym entry.
+    let versym = elf
         .versym
+        .as_ref()
         .ok_or(Error::SymbolVersionError(
             "Missing ELF section Versym".into(),
         ))?
@@ -97,8 +99,24 @@ unsafe fn get_vdso_sym(
         .ok_or(Error::SymbolVersionError(format!(
             "No Versym entry for symbol with idx {} found",
             idx
-        )))?
-        .find_version(&elf.verdef, &elf.verneed, &elf.dynstrtab)
+        )))?;
+
+    // Get the defined symbol version for the ElfVersym entry from the ElfVerdef section.
+    let found_symbol_version = elf
+        .verdef
+        .as_ref()
+        .ok_or(Error::SymbolVersionError(
+            "Missing ELF section Verdef".into(),
+        ))?
+        .iter()
+        .find_map(|vd| {
+            if !versym.is_local() && !versym.is_global() && vd.vd_ndx == versym.version() {
+                let vda0 = vd.iter().next()?;
+                elf.dynstrtab.get_at(vda0.vda_name)
+            } else {
+                None
+            }
+        })
         .ok_or(Error::SymbolVersionError(format!(
             "No symbol version string found for symbol with idx {}",
             idx
@@ -136,7 +154,11 @@ fn main() -> Result<(), Error> {
         // SAFETY: orig_vdso describes a valid memory region as we got it from /proc/self/maps.
         let orig = get_vdso_sym(&orig_vdso, Sym("__vdso_gettimeofday"), Symver("LINUX_2.6"))?;
         // SAFETY: copy_vdso describes a valid and owned memory allocation.
-        let copy = get_vdso_sym(&copy_vdso.as_ref(), Sym("__vdso_gettimeofday"), Symver("LINUX_2.6"))?;
+        let copy = get_vdso_sym(
+            &copy_vdso.as_ref(),
+            Sym("__vdso_gettimeofday"),
+            Symver("LINUX_2.6"),
+        )?;
 
         (orig, copy)
     };

@@ -8,8 +8,6 @@ edition = "2018"
 libc   = "0.2"
 
 [dependencies.goblin]
-#version = "0.4"
-git = "https://github.com/johannst/goblin"
-branch = "elf-gnu-symbol-versioning-utils"
+version = "0.4"
 default-features = false
 features = ["std", "elf32", "elf64", "endian_fd"]

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2021, Johannes Stoelp <dev@memzero.de>
+
 //! Collection of some abstractions and the error definition used by this PoC.
 
 /// Errors that can occur in this PoC.

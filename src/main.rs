@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2021, Johannes Stoelp <dev@memzero.de>
+
 use goblin::elf::{program_header::PT_LOAD, Elf};
 use std::convert::TryFrom;
 use vdso_proxy_poc::{Error, JmpPad, MapEntry, Mmap, VirtAddr};
